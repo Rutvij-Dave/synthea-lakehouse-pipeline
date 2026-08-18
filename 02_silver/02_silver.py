@@ -2,23 +2,35 @@ import dlt
 import pyspark.sql.functions as F
 
 # ==========================================
-# CONFIGURATION VARIABLES (Top-Level)
+# CONFIGURATION VARIABLES
 # ==========================================
-INPUT_BRONZE_TABLE = "bronze_claims_raw"
-SILVER_TABLE_NAME = "silver_claims_cleaned"
+INPUT_JSON_TABLE = "bronze_json_raw"
+INPUT_CSV_TABLE = "bronze_csv_raw"
 
-# ==========================================
-# SILVER CLEANSING & VALIDATION
-# ==========================================
+# ------------------------------------------
+# 1. Clean JSON Stream
+# ------------------------------------------
 @dlt.table(
-    name=SILVER_TABLE_NAME,
-    comment="Validated and conformed claims records."
+    name="silver_json_cleaned",
+    comment="Validated and conformed JSON records."
 )
 @dlt.expect_or_drop("valid_json_payload", "_rescued_data IS NULL")
-def silver_claims_cleaned():
-    raw_stream = dlt.read_stream(INPUT_BRONZE_TABLE)
-    
-    # Preserves original column sequence and appends audit timestamps to the end
+def silver_json_cleaned():
+    raw_stream = dlt.read_stream(INPUT_JSON_TABLE)
+    return raw_stream.select(
+        "*",
+        F.current_timestamp().alias("_ingested_timestamp")
+    )
+
+# ------------------------------------------
+# 2. Clean CSV Stream
+# ------------------------------------------
+@dlt.table(
+    name="silver_csv_cleaned",
+    comment="Validated and conformed CSV records."
+)
+def silver_csv_cleaned():
+    raw_stream = dlt.read_stream(INPUT_CSV_TABLE)
     return raw_stream.select(
         "*",
         F.current_timestamp().alias("_ingested_timestamp")
