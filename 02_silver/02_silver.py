@@ -7,16 +7,22 @@ import pyspark.sql.functions as F
 INPUT_JSON_TABLE = "bronze_json_raw"
 
 # ------------------------------------------
-# 1. Clean JSON Stream
+# 1. Clean & Explode FHIR Bundle
 # ------------------------------------------
 @dlt.table(
     name="silver_json_cleaned",
-    comment="Validated and conformed JSON records."
+    comment="Exploded FHIR bundle extracting individual clinical resources."
 )
-@dlt.expect_or_drop("valid_json_payload", "_rescued_data IS NULL")
 def silver_json_cleaned():
-    raw_stream = dlt.read_stream(INPUT_JSON_TABLE)
-    return raw_stream.select(
-        "*",
+    # Use dlt.read() instead of read_stream() for batch data
+    raw_df = dlt.read(INPUT_JSON_TABLE)
+    
+    # Explode the array of records inside the FHIR Bundle
+    exploded_df = raw_df.select(F.explode("entry").alias("entry_item"))
+    
+    # Extract the specific resource type and the raw payload
+    return exploded_df.select(
+        F.col("entry_item.resource.resourceType").alias("resourceType"),
+        F.col("entry_item.resource").alias("payload"),
         F.current_timestamp().alias("_ingested_timestamp")
     )
