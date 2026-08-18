@@ -5,7 +5,6 @@ import pyspark.sql.functions as F
 # CONFIGURATION VARIABLES
 # ==========================================
 INPUT_JSON_TABLE = "bronze_json_raw"
-INPUT_CSV_TABLE = "bronze_csv_raw"
 
 # ------------------------------------------
 # 1. Clean JSON Stream
@@ -17,20 +16,6 @@ INPUT_CSV_TABLE = "bronze_csv_raw"
 @dlt.expect_or_drop("valid_json_payload", "_rescued_data IS NULL")
 def silver_json_cleaned():
     raw_stream = dlt.read_stream(INPUT_JSON_TABLE)
-    return raw_stream.select(
-        "*",
-        F.current_timestamp().alias("_ingested_timestamp")
-    )
-
-# ------------------------------------------
-# 2. Clean CSV Stream
-# ------------------------------------------
-@dlt.table(
-    name="silver_csv_cleaned",
-    comment="Validated and conformed CSV records."
-)
-def silver_csv_cleaned():
-    raw_stream = dlt.read_stream(INPUT_CSV_TABLE)
     return raw_stream.select(
         "*",
         F.current_timestamp().alias("_ingested_timestamp")
