@@ -6,6 +6,9 @@ import pyspark.sql.functions as F
 # ==========================================
 INPUT_SILVER_TABLE = "silver_json_cleaned"
 
+# ------------------------------------------
+# 1. Gold Feature Aggregation
+# ------------------------------------------
 @dlt.table(
     name="gold_fraud_analytics",
     comment="Aggregated feature mart for fraud detection."
