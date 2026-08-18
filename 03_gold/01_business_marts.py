@@ -2,17 +2,13 @@ import dlt
 import pyspark.sql.functions as F
 
 # ==========================================
-# CONFIGURATION VARIABLES (Top-Level)
+# CONFIGURATION VARIABLES
 # ==========================================
-INPUT_SILVER_TABLE = "silver_claims_cleaned"
-GOLD_TABLE_NAME = "gold_fraud_analytics"
+INPUT_SILVER_TABLE = "silver_json_cleaned"
 
-# ==========================================
-# GOLD FEATURE AGGREGATION
-# ==========================================
 @dlt.table(
-    name=GOLD_TABLE_NAME,
-    comment="Aggregated feature mart for fraud detection and investigative agents."
+    name="gold_fraud_analytics",
+    comment="Aggregated feature mart for fraud detection."
 )
 def gold_fraud_analytics():
     silver_df = dlt.read(INPUT_SILVER_TABLE)
