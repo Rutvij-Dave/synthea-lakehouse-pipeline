@@ -6,7 +6,7 @@ SOURCE_TABLE = "claims_lakehouse.bronze.bronze_fhir_r4_raw"
 
 
 @dp.table(
-    name="silver_claim_fhir_r4",
+    name="claims_lakehouse.silver.silver_claim_fhir_r4",
     comment="Canonical Silver claim resources extracted from Synthea FHIR R4 Bundles."
 )
 def silver_claim_fhir_r4():
