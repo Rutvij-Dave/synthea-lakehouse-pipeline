@@ -3,14 +3,16 @@ from pyspark.sql import functions as F
 
 
 # ============================================================
-# SOURCE
+# SOURCE TABLE
 # ============================================================
 
-SOURCE_TABLE = "claims_lakehouse.silver.silver_claim_fhir_r4"
+SOURCE_TABLE = (
+    "claims_lakehouse.silver.silver_claim_fhir_r4"
+)
 
 
 # ============================================================
-# GOLD: FACT CLAIM
+# GOLD FACT: CLAIM
 #
 # Grain:
 #   1 row = 1 FHIR R4 Claim
@@ -27,47 +29,70 @@ def fact_claim():
     return (
         silver_df
 
-        # ----------------------------------------------------
-        # Select claim attributes
-        # ----------------------------------------------------
+        # ====================================================
+        # SELECT BUSINESS ATTRIBUTES
+        # ====================================================
         .select(
+
+            # ------------------------------------------------
             # Claim identifier
+            # ------------------------------------------------
             F.col("claim_id"),
 
-            # Patient / Provider
+            # ------------------------------------------------
+            # Patient relationship
+            # ------------------------------------------------
             F.col("claim_payload.patient.reference")
                 .alias("patient_reference"),
 
+            # ------------------------------------------------
+            # Provider relationship
+            # ------------------------------------------------
             F.col("claim_payload.provider.reference")
                 .alias("provider_reference"),
 
+            # ------------------------------------------------
             # Claim status
+            # ------------------------------------------------
             F.col("claim_payload.status")
                 .alias("claim_status"),
 
-            # FHIR Claim type is a STRING in this dataset
+            # ------------------------------------------------
+            # Claim type
+            #
+            # In this Synthea dataset, FHIR 'type' is STRING.
+            # ------------------------------------------------
             F.col("claim_payload.type")
                 .alias("claim_type"),
 
+            # ------------------------------------------------
             # Service period
+            # ------------------------------------------------
             F.col("claim_payload.billablePeriod.start")
                 .alias("service_start"),
 
             F.col("claim_payload.billablePeriod.end")
                 .alias("service_end"),
 
-            # Claim created date
+            # ------------------------------------------------
+            # Claim creation date
+            # ------------------------------------------------
             F.col("claim_payload.created")
                 .alias("claim_created"),
 
-            # Payment
-            F.col("claim_payload.total.value")
-                .alias("claim_total_amount"),
+            # ------------------------------------------------
+            # Claim financial total
+            #
+            # IMPORTANT:
+            # claim_payload.total is STRING in this dataset.
+            # Keep the original value for inspection first.
+            # ------------------------------------------------
+            F.col("claim_payload.total")
+                .alias("claim_total_raw"),
 
-            F.col("claim_payload.total.currency")
-                .alias("claim_total_currency"),
-
+            # ------------------------------------------------
             # Number of claim line items
+            # ------------------------------------------------
             F.size(
                 F.coalesce(
                     F.col("claim_payload.item"),
@@ -75,19 +100,27 @@ def fact_claim():
                 )
             ).alias("claim_line_count"),
 
-            # Lineage
-            F.col("_ingest_ts"),
-            F.col("_record_source"),
+            # ------------------------------------------------
+            # Lineage / governance
+            # ------------------------------------------------
+            F.col("_ingest_ts")
+                .alias("_ingest_ts"),
+
+            F.col("_record_source")
+                .alias("_record_source"),
 
             F.current_timestamp()
                 .alias("_gold_created_ts")
         )
 
-        # ----------------------------------------------------
-        # Patient ID
+        # ====================================================
+        # CANONICAL PATIENT ID
+        #
         # Example:
-        # Patient/12345 -> 12345
-        # ----------------------------------------------------
+        #   Patient/12345
+        #       ↓
+        #   12345
+        # ====================================================
         .withColumn(
             "patient_id",
             F.regexp_extract(
@@ -97,11 +130,13 @@ def fact_claim():
             )
         )
 
-        # ----------------------------------------------------
-        # Provider ID
-        # Example:
-        # Practitioner/12345 -> 12345
-        # ----------------------------------------------------
+        # ====================================================
+        # CANONICAL PROVIDER ID
+        #
+        # Supports:
+        #   Practitioner/12345
+        #   PractitionerRole/12345
+        # ====================================================
         .withColumn(
             "provider_id",
             F.regexp_extract(
