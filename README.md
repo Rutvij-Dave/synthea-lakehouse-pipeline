@@ -243,77 +243,7 @@ claims_lakehouse.gold.mv_ai_claim_features
 claims_lakehouse.governance.ai_feature_contract
 ```
 
-## 7. AI team start query
-
-The single handoff query is:
-
-```sql
-SELECT
-    claim_id,
-    patient_id,
-    provider_id,
-    claim_type,
-    claim_status,
-    service_start_date,
-    service_end_date,
-    claim_created_ts,
-    claim_total_amount,
-    claim_total_currency,
-    claim_line_count,
-    line_count_from_detail,
-    line_net_amount_total,
-    avg_line_amount,
-    max_line_amount,
-    min_line_amount,
-    claim_vs_line_amount_difference,
-    claim_amount_per_line,
-    claim_amount_log,
-    service_duration_days,
-    patient_claim_count,
-    patient_total_claim_amount,
-    patient_avg_claim_amount,
-    patient_max_claim_amount,
-    patient_avg_line_count,
-    provider_claim_count,
-    provider_unique_patient_count,
-    provider_total_claim_amount,
-    provider_avg_claim_amount,
-    provider_max_claim_amount,
-    provider_avg_line_count,
-    claim_to_patient_avg_ratio,
-    claim_to_provider_avg_ratio,
-    high_amount_flag,
-    multi_line_flag,
-    missing_patient_flag,
-    missing_provider_flag,
-    _ingest_ts,
-    _record_source
-FROM claims_lakehouse.gold.mv_ai_claim_features
-ORDER BY claim_created_ts, claim_id;
-```
-
-This is the **data-platform handoff**. AI engineering should not modify the Gold feature mart directly.
-
-## 8. What the AI team still owns
-
-The AI team should build:
-
-1. feature selection / additional feature engineering
-2. unsupervised anomaly detector
-3. supervised detector when trusted labels are available
-4. anomaly score and rank
-5. model registration and versioning
-6. explainability artifacts
-7. investigation-ready case packs
-8. natural-language case summaries
-9. suggested drill-down queries
-10. outreach / audit templates
-11. investigator UI
-12. exportable case bundles
-
-The data platform provides the governed inputs for those components.
-
-## 9. Important interpretation rule
+## 7. Important interpretation rule
 
 `claim_vs_line_amount_difference` is an analytical/reconciliation feature.
 
@@ -321,7 +251,7 @@ It must not automatically be interpreted as proof of fraud or as a hard data-qua
 
 The AI team should evaluate this feature in combination with other signals.
 
-## 10. Data quality checks already demonstrated
+## 8. Data quality checks already demonstrated
 
 The current AI feature mart has been validated for:
 
@@ -344,7 +274,7 @@ Contract -> Feature Mart: PASS
 Feature Mart -> Contract: PASS
 ```
 
-## 11. GitHub Actions
+## 9. GitHub Actions
 
 Workflow:
 
@@ -366,7 +296,7 @@ Repository variable:
 RUN_DATABRICKS_TESTS=true
 ```
 
-## 12. Development rule
+## 10. Development rule
 
 Do not allow AI/model code to bypass the governed feature mart.
 
@@ -383,34 +313,3 @@ governed feature contract
 ```
 
 Do not build anomaly models directly against Bronze raw payloads.
-
-## 13. Final ownership boundary
-
-### Data Platform / Databricks
-
-Owns:
-- ingestion
-- medallion layers
-- deduplication
-- DQ
-- quarantine
-- dimensions
-- facts
-- reporting
-- AI feature mart
-- AI feature contract
-- CI/CD quality checks
-
-### AI Engineering
-
-Owns:
-- models
-- anomaly scores
-- model registry
-- explainability
-- investigation agent
-- case generation
-- investigator UI
-- exportable investigation bundles
-
-This separation gives the AI team a stable, governed interface while allowing the model/agent implementation to evolve independently.
