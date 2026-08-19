@@ -11,6 +11,7 @@ SOURCE_TABLE = "claims_lakehouse.silver.silver_claim_fhir_r4"
 
 # ============================================================
 # GOLD: FACT CLAIM
+#
 # Grain:
 #   1 row = 1 FHIR R4 Claim
 # ============================================================
@@ -27,13 +28,13 @@ def fact_claim():
         silver_df
 
         # ----------------------------------------------------
-        # Select claim attributes from Silver
+        # Select claim attributes
         # ----------------------------------------------------
         .select(
             # Claim identifier
             F.col("claim_id"),
 
-            # Patient / Provider references
+            # Patient / Provider
             F.col("claim_payload.patient.reference")
                 .alias("patient_reference"),
 
@@ -44,8 +45,8 @@ def fact_claim():
             F.col("claim_payload.status")
                 .alias("claim_status"),
 
-            # Claim type
-            F.col("claim_payload.type.text")
+            # FHIR Claim type is a STRING in this dataset
+            F.col("claim_payload.type")
                 .alias("claim_type"),
 
             # Service period
@@ -55,11 +56,11 @@ def fact_claim():
             F.col("claim_payload.billablePeriod.end")
                 .alias("service_end"),
 
-            # Claim creation timestamp
+            # Claim created date
             F.col("claim_payload.created")
                 .alias("claim_created"),
 
-            # Payment information
+            # Payment
             F.col("claim_payload.payment.amount.value")
                 .alias("payment_amount"),
 
@@ -74,9 +75,7 @@ def fact_claim():
                 )
             ).alias("claim_line_count"),
 
-            # ------------------------------------------------
-            # Lineage / audit columns
-            # ------------------------------------------------
+            # Lineage
             F.col("_ingest_ts"),
             F.col("_record_source"),
 
@@ -85,11 +84,9 @@ def fact_claim():
         )
 
         # ----------------------------------------------------
-        # Extract canonical Patient ID
+        # Patient ID
         # Example:
-        # Patient/12345
-        #       ↓
-        # 12345
+        # Patient/12345 -> 12345
         # ----------------------------------------------------
         .withColumn(
             "patient_id",
@@ -101,10 +98,9 @@ def fact_claim():
         )
 
         # ----------------------------------------------------
-        # Extract canonical Provider ID
-        # Supports:
-        # Practitioner/123
-        # PractitionerRole/123
+        # Provider ID
+        # Example:
+        # Practitioner/12345 -> 12345
         # ----------------------------------------------------
         .withColumn(
             "provider_id",
