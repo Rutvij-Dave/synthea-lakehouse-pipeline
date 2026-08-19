@@ -9,7 +9,7 @@ FHIR_R4_PATH = (
 
 
 @dp.table(
-    name="bronze_fhir_r4_raw",
+    name="claims_lakehouse.bronze.bronze_fhir_r4_raw",
     comment="Raw Synthea FHIR R4 Bundles."
 )
 def bronze_fhir_r4_raw():
