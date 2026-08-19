@@ -14,12 +14,12 @@ def dim_claim_type():
     return (
         spark.read.table(SOURCE_TABLE)
         .select(
-            F.col("claim_type")
+            F.col("claim_payload.type").alias("claim_type")
         )
         .filter(
             F.col("claim_type").isNotNull()
         )
-        .dropDuplicates()
+        .dropDuplicates(["claim_type"])
         .withColumn(
             "claim_type_key",
             F.sha2(
