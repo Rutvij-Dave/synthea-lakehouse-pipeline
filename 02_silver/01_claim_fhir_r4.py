@@ -7,7 +7,7 @@ SOURCE_TABLE = "claims_lakehouse.bronze.bronze_fhir_r4_raw"
 
 @dp.table(
     name="claims_lakehouse.silver.silver_claim_fhir_r4",
-    comment="Canonical Silver claim resources extracted from Synthea FHIR R4 Bundles."
+    comment="Conformed FHIR R4 Claim resources."
 )
 def silver_claim_fhir_r4():
 
@@ -23,11 +23,18 @@ def silver_claim_fhir_r4():
         .select(
             "_ingest_ts",
             "_record_source",
-            F.col("entry_item.resource.resourceType").alias("resource_type"),
-            F.col("entry_item.resource.id").alias("claim_id"),
-            F.col("entry_item.resource").alias("claim_payload")
+            F.col("entry_item.resource.resourceType")
+                .alias("resource_type"),
+            F.col("entry_item.resource.id")
+                .alias("claim_id"),
+            F.col("entry_item.resource")
+                .alias("claim_payload")
         )
         .filter(
             F.col("resource_type") == "Claim"
+        )
+        .withColumn(
+            "_silver_created_ts",
+            F.current_timestamp()
         )
     )
