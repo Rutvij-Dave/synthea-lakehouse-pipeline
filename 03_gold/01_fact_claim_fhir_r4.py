@@ -87,8 +87,15 @@ def fact_claim():
             # claim_payload.total is STRING in this dataset.
             # Keep the original value for inspection first.
             # ------------------------------------------------
-            F.col("claim_payload.total")
-                .alias("claim_total_raw"),
+            F.get_json_object(
+            F.col("claim_payload.total"),
+            "$.value"
+            ).cast("double").alias("claim_total_amount"),
+
+             F.get_json_object(
+            F.col("claim_payload.total"),
+            "$.currency"
+            ).alias("claim_total_currency"),
 
             # ------------------------------------------------
             # Number of claim line items
