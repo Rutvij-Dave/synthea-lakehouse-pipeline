@@ -61,11 +61,11 @@ def fact_claim():
                 .alias("claim_created"),
 
             # Payment
-            F.col("claim_payload.payment.amount.value")
-                .alias("payment_amount"),
+            F.col("claim_payload.total.value")
+                .alias("claim_total_amount"),
 
-            F.col("claim_payload.payment.amount.currency")
-                .alias("payment_currency"),
+            F.col("claim_payload.total.currency")
+                .alias("claim_total_currency"),
 
             # Number of claim line items
             F.size(
