@@ -15,50 +15,91 @@ def fact_claim():
 
     return (
         df
-        .select(
-            F.col("claim_id"),
-
-            F.col("patient_id"),
-            F.col("provider_id"),
-
-            F.col("patient_reference"),
-            F.col("provider_reference"),
-
-            F.col("claim_status"),
-            F.col("claim_type"),
-
-            F.to_date(
-                F.col("service_start")
-            ).alias("service_start_date"),
-
-            F.to_date(
-                F.col("service_end")
-            ).alias("service_end_date"),
-
-            F.to_timestamp(
-                F.col("claim_created")
-            ).alias("claim_created_ts"),
-
+        .withColumn(
+            "patient_reference",
+            F.col("claim_payload.patient.reference")
+        )
+        .withColumn(
+            "provider_reference",
+            F.col("claim_payload.provider.reference")
+        )
+        .withColumn(
+            "patient_id",
+            F.regexp_extract(
+                F.col("patient_reference"),
+                r"Patient/([^/]+)",
+                1
+            )
+        )
+        .withColumn(
+            "provider_id",
+            F.regexp_extract(
+                F.col("provider_reference"),
+                r"(?:Practitioner|PractitionerRole)/([^/]+)",
+                1
+            )
+        )
+        .withColumn(
+            "claim_type",
+            F.col("claim_payload.type")
+        )
+        .withColumn(
+            "claim_total_amount",
             F.get_json_object(
                 F.col("claim_payload.total"),
                 "$.value"
-            ).cast("double").alias("claim_total_amount"),
-
+            ).cast("double")
+        )
+        .withColumn(
+            "claim_total_currency",
             F.get_json_object(
                 F.col("claim_payload.total"),
                 "$.currency"
-            ).alias("claim_total_currency"),
-
+            )
+        )
+        .withColumn(
+            "service_start_date",
+            F.to_date(
+                F.col("claim_payload.billablePeriod.start")
+            )
+        )
+        .withColumn(
+            "service_end_date",
+            F.to_date(
+                F.col("claim_payload.billablePeriod.end")
+            )
+        )
+        .withColumn(
+            "claim_created_ts",
+            F.to_timestamp(
+                F.col("claim_payload.created")
+            )
+        )
+        .withColumn(
+            "claim_line_count",
             F.size(
                 F.coalesce(
                     F.col("claim_payload.item"),
                     F.array()
                 )
-            ).alias("claim_line_count"),
-
-            F.col("_ingest_ts"),
-            F.col("_record_source"),
-
+            )
+        )
+        .select(
+            "claim_id",
+            "patient_id",
+            "provider_id",
+            "patient_reference",
+            "provider_reference",
+            "claim_type",
+            "claim_status",
+            "service_start_date",
+            "service_end_date",
+            "claim_created_ts",
+            "claim_total_amount",
+            "claim_total_currency",
+            "claim_line_count",
+            "_ingest_ts",
+            "_record_source",
             F.current_timestamp().alias("_gold_created_ts")
         )
     )
