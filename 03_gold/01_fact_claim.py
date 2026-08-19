@@ -10,7 +10,6 @@ UUID_PATTERN = (
     r"[0-9a-f]{12})"
 )
 
-
 @dp.table(
     name="claims_lakehouse.gold.fact_claim",
     comment="Gold claim fact; grain is one row per unique claim_id."
@@ -20,37 +19,35 @@ def fact_claim():
     return (
         spark.read.table(SOURCE_TABLE)
 
-        # Preserve the actual source relationship representation
         .withColumn(
             "patient_reference_raw",
             F.col("claim_payload.patient").cast("string")
         )
-
         .withColumn(
             "provider_reference_raw",
             F.col("claim_payload.provider").cast("string")
         )
 
-        # Extract the UUID embedded in urn:uuid:...
+        # The observed Synthea Claim payload contains UUID references
+        # such as "urn:uuid:<uuid>" rather than "Patient/<id>".
         .withColumn(
             "patient_id",
             F.regexp_extract(
-                F.col("patient_reference_raw"),
+                F.coalesce(F.col("patient_reference_raw"), F.lit("")),
                 UUID_PATTERN,
                 1
             )
         )
-
         .withColumn(
             "provider_id",
             F.regexp_extract(
-                F.col("provider_reference_raw"),
+                F.coalesce(F.col("provider_reference_raw"), F.lit("")),
                 UUID_PATTERN,
                 1
             )
         )
 
-        # Convert failed extraction to NULL
+        # Convert a failed regex extraction from "" to NULL.
         .withColumn(
             "patient_id",
             F.when(
@@ -58,7 +55,6 @@ def fact_claim():
                 F.lit(None).cast("string")
             ).otherwise(F.trim(F.col("patient_id")))
         )
-
         .withColumn(
             "provider_id",
             F.when(
@@ -71,12 +67,10 @@ def fact_claim():
             "claim_type",
             F.col("claim_payload.type")
         )
-
         .withColumn(
             "claim_status",
             F.col("claim_payload.status")
         )
-
         .withColumn(
             "claim_total_amount",
             F.get_json_object(
@@ -84,7 +78,6 @@ def fact_claim():
                 "$.value"
             ).cast("double")
         )
-
         .withColumn(
             "claim_total_currency",
             F.get_json_object(
@@ -92,28 +85,24 @@ def fact_claim():
                 "$.currency"
             )
         )
-
         .withColumn(
             "service_start_date",
             F.to_date(
                 F.col("claim_payload.billablePeriod.start")
             )
         )
-
         .withColumn(
             "service_end_date",
             F.to_date(
                 F.col("claim_payload.billablePeriod.end")
             )
         )
-
         .withColumn(
             "claim_created_ts",
             F.to_timestamp(
                 F.col("claim_payload.created")
             )
         )
-
         .withColumn(
             "claim_line_count",
             F.size(
@@ -122,6 +111,7 @@ def fact_claim():
                     F.array()
                 )
             )
+        )
 
         .select(
             "claim_id",
