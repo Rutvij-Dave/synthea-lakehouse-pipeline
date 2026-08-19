@@ -2,7 +2,7 @@ from pyspark import pipelines as dp
 from pyspark.sql import functions as F
 
 
-SOURCE_TABLE = "claims_lakehouse.bronze.bronze_fhir_r4_raw"
+SOURCE_TABLE = "claims_lakehouse.silver.silver_patient_fhir_r4"
 
 
 @dp.table(
