@@ -7,7 +7,7 @@ from pyspark.sql import functions as F
 # ============================================================
 
 SOURCE_TABLE = (
-    "claims_lakehouse.silver.silver_claim_fhir_r4"
+    "claims_lakehouse.silver.silver_claim_dedup"
 )
 
 
