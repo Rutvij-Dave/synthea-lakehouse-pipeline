@@ -1,0 +1,2 @@
+pytest>=8
+databricks-sql-connector>=4

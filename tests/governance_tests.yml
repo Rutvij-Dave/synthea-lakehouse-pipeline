@@ -1,47 +1,43 @@
 version: "1.0"
 architecture:
   name: synthea_er_medallion_architecture
-  purpose: "Governed multi-format Synthea claims lakehouse."
-layers:
-  bronze: "Source-aligned raw data and lineage."
-  silver: "Canonicalization, DQ, deduplication and quarantine."
-  gold: "Dimensions and explicit-grain facts."
-  reporting: "Business-facing reporting datasets."
-  ai: "Downstream feature engineering and anomaly detection."
-formats:
-  - CSV
-  - FHIR_R4
-  - FHIR_STU3
-  - FHIR_DSTU2
-  - C-CDA
+  layers: [landing, bronze, silver, gold, reporting, governance, tests]
+
+ai_contract:
+  feature_mart: claims_lakehouse.gold.mv_ai_claim_features
+  anomaly_scoring: AI_TEAM
+  model_decision_in_mart: false
+
 tests:
-  - id: GOV-001
+  - id: SIL-001
     name: claim_id_not_null
     layer: silver
     severity: critical
-    rule: "claim_id IS NOT NULL"
+  - id: SIL-002
+    name: claim_dedup_unique
+    layer: silver
+    severity: critical
+  - id: GLD-001
+    name: fact_claim_unique
+    layer: gold
+    severity: critical
+  - id: AI-001
+    name: ai_materialized_view_exists
+    layer: gold
+    severity: critical
+  - id: AI-002
+    name: ai_materialized_view_unique_claim
+    layer: gold
+    severity: critical
+  - id: AI-003
+    name: claim_amount_non_negative
+    layer: gold
+    severity: high
+  - id: GOV-001
+    name: governance_dictionary_exists
+    layer: governance
+    severity: high
   - id: GOV-002
-    name: claim_grain_unique
-    layer: silver
-    severity: critical
-    rule: "silver_claim_dedup has one row per claim_id"
-  - id: GOV-003
-    name: gold_grain_unique
-    layer: gold
-    severity: critical
-    rule: "fact_claim has one row per claim_id"
-  - id: GOV-004
-    name: lineage_present
-    layer: all
-    severity: critical
-    rule: "_ingest_ts, _record_source and _source_file retained"
-  - id: GOV-005
-    name: quarantine_auditability
-    layer: silver
-    severity: critical
-    rule: "rejected records retain a reason"
-  - id: GOV-006
-    name: gold_reconciliation
-    layer: gold
-    severity: critical
-    rule: "Gold fact row count reconciles to deduplicated Silver"
+    name: governance_dq_exists
+    layer: governance
+    severity: high
