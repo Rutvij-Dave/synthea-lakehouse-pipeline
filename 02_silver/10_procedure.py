@@ -4,7 +4,7 @@ from pyspark.sql import functions as F
 
 @dp.table(
     name="claims_lakehouse.silver.silver_procedure",
-    comment="Conformed Synthea procedure events from CSV source."
+    comment="Conformed Synthea procedure events from the CSV source."
 )
 def silver_procedure():
 
@@ -15,13 +15,18 @@ def silver_procedure():
         .select(
             F.col("PATIENT").cast("string").alias("patient_id"),
             F.col("ENCOUNTER").cast("string").alias("encounter_id"),
-            F.to_timestamp("START").alias("procedure_start_ts"),
-            F.to_timestamp("STOP").alias("procedure_end_ts"),
+            F.to_timestamp("DATE").alias("procedure_date"),
             F.col("CODE").cast("string").alias("procedure_code"),
-            F.col("DESCRIPTION").cast("string").alias("procedure_description"),
+            F.col("DESCRIPTION").cast("string").alias(
+                "procedure_description"
+            ),
             F.col("BASE_COST").cast("double").alias("base_cost"),
-            F.col("REASONCODE").cast("string").alias("reason_code"),
-            F.col("REASONDESCRIPTION").cast("string").alias("reason_description"),
+            F.col("REASONCODE").cast("string").alias(
+                "reason_code"
+            ),
+            F.col("REASONDESCRIPTION").cast("string").alias(
+                "reason_description"
+            ),
             F.col("_ingest_ts"),
             F.col("_record_source"),
             F.col("_source_file")
@@ -35,30 +40,28 @@ def silver_procedure():
             F.sha2(
                 F.concat_ws(
                     "||",
-                    F.coalesce(F.col("patient_id"), F.lit("")),
-                    F.coalesce(F.col("encounter_id"), F.lit("")),
                     F.coalesce(
-                        F.col("procedure_start_ts").cast("string"),
+                        F.col("patient_id"),
                         F.lit("")
                     ),
-                    F.coalesce(F.col("procedure_code"), F.lit("")),
+                    F.coalesce(
+                        F.col("encounter_id"),
+                        F.lit("")
+                    ),
+                    F.coalesce(
+                        F.col("procedure_date").cast("string"),
+                        F.lit("")
+                    ),
+                    F.coalesce(
+                        F.col("procedure_code"),
+                        F.lit("")
+                    ),
                     F.coalesce(
                         F.col("procedure_description"),
                         F.lit("")
                     )
                 ),
                 256
-            )
-        )
-        .withColumn(
-            "procedure_duration_days",
-            F.when(
-                F.col("procedure_start_ts").isNotNull()
-                & F.col("procedure_end_ts").isNotNull(),
-                F.datediff(
-                    F.to_date("procedure_end_ts"),
-                    F.to_date("procedure_start_ts")
-                )
             )
         )
         .withColumn(
