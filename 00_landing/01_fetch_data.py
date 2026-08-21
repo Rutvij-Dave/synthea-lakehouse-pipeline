@@ -1,6 +1,8 @@
 import os
+import shutil
 import zipfile
 import requests
+
 
 # ============================================================
 # CONFIGURATION
@@ -11,72 +13,42 @@ BASE_VOLUME = "/Volumes/claims_lakehouse/raw/synthea_ingress"
 DOWNLOAD_DIR = f"{BASE_VOLUME}/downloads"
 EXTRACT_DIR = f"{BASE_VOLUME}/extracted"
 
+LOCAL_TMP = "/tmp/synthea_landing"
+
 
 # ============================================================
-# SYNTHEA 1K SAMPLE DATASETS
+# CURRENT SYNTHEA SAMPLE DATA
 # ============================================================
 
 DATASETS = {
     "fhir_r4": {
-        "url": (
-            "https://synthetichealth.github.io/"
-            "synthea-sample-data/downloads/"
-            "synthea_sample_data_fhir_r4_sep2019.zip"
-        ),
+        "url": "https://synthetichealth.github.io/synthea-sample-data/downloads/synthea_sample_data_fhir_r4_sep2019.zip",
         "zip_name": "synthea_sample_data_fhir_r4.zip",
     },
-
     "fhir_stu3": {
-        "url": (
-            "https://synthetichealth.github.io/"
-            "synthea-sample-data/downloads/"
-            "synthea_sample_data_fhir_stu3_sep2019.zip"
-        ),
+        "url": "https://synthetichealth.github.io/synthea-sample-data/downloads/synthea_sample_data_fhir_stu3_sep2019.zip",
         "zip_name": "synthea_sample_data_fhir_stu3.zip",
     },
-
     "fhir_dstu2": {
-        "url": (
-            "https://synthetichealth.github.io/"
-            "synthea-sample-data/downloads/"
-            "synthea_sample_data_fhir_dstu2_sep2019.zip"
-        ),
+        "url": "https://synthetichealth.github.io/synthea-sample-data/downloads/synthea_sample_data_fhir_dstu2_sep2019.zip",
         "zip_name": "synthea_sample_data_fhir_dstu2.zip",
     },
-
     "ccda": {
-        "url": (
-            "https://synthetichealth.github.io/"
-            "synthea-sample-data/downloads/"
-            "synthea_sample_data_ccda_sep2019.zip"
-        ),
+        "url": "https://synthetichealth.github.io/synthea-sample-data/downloads/synthea_sample_data_ccda_sep2019.zip",
         "zip_name": "synthea_sample_data_ccda.zip",
     },
-
     "csv": {
-        "url": (
-            "https://synthetichealth.github.io/"
-            "synthea-sample-data/downloads/"
-            "synthea_sample_data_csv_apr2020.zip"
-        ),
+        "url": "https://synthetichealth.github.io/synthea-sample-data/downloads/synthea_sample_data_csv_apr2020.zip",
         "zip_name": "synthea_sample_data_csv.zip",
     },
 }
 
 
 # ============================================================
-# CREATE DIRECTORIES
+# HELPERS
 # ============================================================
 
-dbutils.fs.mkdirs(DOWNLOAD_DIR)
-dbutils.fs.mkdirs(EXTRACT_DIR)
-
-
-# ============================================================
-# DOWNLOAD FUNCTION
-# ============================================================
-
-def download_file(url: str, destination_path: str) -> None:
+def download_file(url: str, local_path: str) -> None:
 
     print("=" * 80)
     print("DOWNLOADING")
@@ -94,13 +66,15 @@ def download_file(url: str, destination_path: str) -> None:
 
     total_bytes = 0
 
-    with open(destination_path, "wb") as file:
+    with open(local_path, "wb") as f:
 
         for chunk in response.iter_content(
             chunk_size=1024 * 1024
         ):
+
             if chunk:
-                file.write(chunk)
+
+                f.write(chunk)
                 total_bytes += len(chunk)
 
     print(
@@ -109,87 +83,54 @@ def download_file(url: str, destination_path: str) -> None:
     )
 
 
+def copy_tree_to_volume(
+    local_dir: str,
+    volume_dir: str
+) -> None:
+
+    os.makedirs(volume_dir, exist_ok=True)
+
+    for item in os.listdir(local_dir):
+
+        source = os.path.join(local_dir, item)
+        target = os.path.join(volume_dir, item)
+
+        if os.path.isdir(source):
+
+            if os.path.exists(target):
+                shutil.rmtree(target)
+
+            shutil.copytree(
+                source,
+                target
+            )
+
+        else:
+
+            shutil.copy2(
+                source,
+                target
+            )
+
+
 # ============================================================
-# SAFE ZIP EXTRACTION
+# CREATE VOLUME DIRECTORIES
 # ============================================================
 
-def extract_zip_to_volume(zip_path: str, output_dir: str) -> None:
+os.makedirs(
+    DOWNLOAD_DIR,
+    exist_ok=True
+)
 
-    print(f"Extracting:\n{zip_path}")
+os.makedirs(
+    EXTRACT_DIR,
+    exist_ok=True
+)
 
-    # Remove previous extraction
-    try:
-        dbutils.fs.rm(
-            output_dir,
-            recurse=True
-        )
-    except Exception:
-        pass
-
-    dbutils.fs.mkdirs(output_dir)
-
-    with zipfile.ZipFile(zip_path, "r") as zip_ref:
-
-        members = zip_ref.infolist()
-
-        print(f"Files in ZIP: {len(members)}")
-
-        for member in members:
-
-            # Ignore directory entries
-            if member.is_dir():
-                continue
-
-            # Normalize the ZIP path
-            relative_path = member.filename.replace("\\", "/")
-
-            # Prevent path traversal
-            normalized = os.path.normpath(relative_path)
-
-            if normalized.startswith(".."):
-                raise ValueError(
-                    f"Unsafe ZIP entry: {member.filename}"
-                )
-
-            destination = os.path.join(
-                output_dir,
-                normalized
-            )
-
-            destination_parent = os.path.dirname(
-                destination
-            )
-
-            # Create parent directory
-            if destination_parent:
-                os.makedirs(
-                    destination_parent,
-                    exist_ok=True
-                )
-
-            # Read from ZIP and write directly to Volume
-            with zip_ref.open(member, "r") as source:
-
-                with open(destination, "wb") as target:
-
-                    while True:
-
-                        chunk = source.read(
-                            1024 * 1024
-                        )
-
-                        if not chunk:
-                            break
-
-                        target.write(chunk)
-
-            print(
-                f"Extracted: {relative_path}"
-            )
-
-    print(
-        f"Extraction complete:\n{output_dir}"
-    )
+os.makedirs(
+    LOCAL_TMP,
+    exist_ok=True
+)
 
 
 # ============================================================
@@ -198,72 +139,137 @@ def extract_zip_to_volume(zip_path: str, output_dir: str) -> None:
 
 for dataset_name, config in DATASETS.items():
 
-    print("\n")
+    print()
     print("#" * 80)
-    print(f"PROCESSING DATASET: {dataset_name}")
+    print(
+        f"PROCESSING DATASET: "
+        f"{dataset_name}"
+    )
     print("#" * 80)
 
     url = config["url"]
     zip_name = config["zip_name"]
 
-    # ZIP location in Unity Catalog Volume
-    volume_zip = (
+    local_zip = (
+        f"{LOCAL_TMP}/{zip_name}"
+    )
+
+    local_extract = (
+        f"{LOCAL_TMP}/{dataset_name}"
+    )
+
+    volume_download = (
         f"{DOWNLOAD_DIR}/{zip_name}"
     )
 
-    # Extracted location in Unity Catalog Volume
     volume_extract = (
         f"{EXTRACT_DIR}/{dataset_name}"
     )
 
     # --------------------------------------------------------
-    # 1. DOWNLOAD
+    # 1. Download locally
     # --------------------------------------------------------
 
-    print("\nStep 1: Downloading ZIP...")
+    print("Step 1: Downloading ZIP...")
 
     download_file(
         url=url,
-        destination_path=volume_zip,
-    )
-
-    print(
-        f"ZIP saved to:\n{volume_zip}"
+        local_path=local_zip
     )
 
     # --------------------------------------------------------
-    # 2. EXTRACT DIRECTLY TO VOLUME
+    # 2. Copy ZIP to Volume
+    # --------------------------------------------------------
+
+    print("Step 2: Copying ZIP to Volume...")
+
+    shutil.copy2(
+        local_zip,
+        volume_download
+    )
+
+    print(
+        f"ZIP saved to:\n"
+        f"{volume_download}"
+    )
+
+    # --------------------------------------------------------
+    # 3. Extract locally
     # --------------------------------------------------------
 
     print(
-        "\nStep 2: Extracting ZIP directly into Volume..."
+        "Step 3: Extracting locally..."
     )
 
-    extract_zip_to_volume(
-        zip_path=volume_zip,
-        output_dir=volume_extract,
+    if os.path.exists(local_extract):
+
+        shutil.rmtree(
+            local_extract
+        )
+
+    os.makedirs(
+        local_extract,
+        exist_ok=True
+    )
+
+    with zipfile.ZipFile(
+        local_zip,
+        "r"
+    ) as zip_ref:
+
+        zip_ref.extractall(
+            local_extract
+        )
+
+    # --------------------------------------------------------
+    # 4. Copy extraction to Volume
+    # --------------------------------------------------------
+
+    print(
+        "Step 4: Copying extracted data "
+        "to Unity Catalog Volume..."
+    )
+
+    if os.path.exists(volume_extract):
+
+        shutil.rmtree(
+            volume_extract
+        )
+
+    os.makedirs(
+        volume_extract,
+        exist_ok=True
+    )
+
+    copy_tree_to_volume(
+        local_extract,
+        volume_extract
     )
 
     print(
-        f"\nCompleted dataset: {dataset_name}"
+        f"Extracted data saved to:\n"
+        f"{volume_extract}"
+    )
+
+    # --------------------------------------------------------
+    # 5. Cleanup local temporary files
+    # --------------------------------------------------------
+
+    os.remove(local_zip)
+
+    shutil.rmtree(
+        local_extract
+    )
+
+    print(
+        f"Completed: {dataset_name}"
     )
 
 
-# ============================================================
-# COMPLETE
-# ============================================================
-
-print("\n")
-print("#" * 80)
-print("ALL SYNTHEA DATASETS DOWNLOADED AND EXTRACTED")
-print("#" * 80)
-
+print()
+print("=" * 80)
 print(
-    f"\nDownloads:"
-    f"\n{DOWNLOAD_DIR}"
+    "ALL SYNTHEA DATASETS DOWNLOADED "
+    "AND EXTRACTED SUCCESSFULLY"
 )
-
-print(
-    f"\nExtracted data:"
-    f"\n{EXTRACT_DIR}"
-)
+print("=" * 80)
