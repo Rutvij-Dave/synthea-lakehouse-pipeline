@@ -14,6 +14,9 @@ CREATE SCHEMA IF NOT EXISTS claims_lakehouse.reporting;
 CREATE VOLUME IF NOT EXISTS
 claims_lakehouse.raw.synthea_ingress;
 
+-- RUN 00Landing/ 01 fetchdata.py seperately
+
+LIST '/Volumes/claims_lakehouse/raw/synthea_ingress';
 
 -- AI TeamSELECT
  SELECT
