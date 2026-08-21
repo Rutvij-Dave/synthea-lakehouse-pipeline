@@ -63,5 +63,15 @@ LIST '/Volumes/claims_lakehouse/raw/synthea_ingress/extracted/fhir_r4/fhir';
     missing_provider_flag,
     _ingest_ts,
     _record_source
-FROM claims_lakehouse.gold.mv_ai_claim_features
-ORDER BY claim_created_ts, claim_id;
+FROM claims_lakehouse.reporting.ai_claim_features
+ORDER BY claim_created_ts, claim_id limit 100;
+
+show tables in claims_lakehouse.
+
+
+SELECT
+    COUNT(*) AS total_rows,
+    COUNT(DISTINCT claim_id) AS unique_claims,
+    COUNT(DISTINCT patient_id) AS unique_patients,
+    COUNT(DISTINCT provider_id) AS unique_providers
+FROM claims_lakehouse.gold.mv_ai_claim_features;
