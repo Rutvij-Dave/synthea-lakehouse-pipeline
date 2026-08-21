@@ -16,7 +16,11 @@ claims_lakehouse.raw.synthea_ingress;
 
 -- RUN 00Landing/ 01 fetchdata.py seperately
 
-LIST '/Volumes/claims_lakehouse/raw/synthea_ingress';
+LIST '/Volumes/claims_lakehouse/raw/synthea_ingress/extracted';
+
+LIST '/Volumes/claims_lakehouse/raw/synthea_ingress/extracted/csv/csv';
+
+LIST '/Volumes/claims_lakehouse/raw/synthea_ingress/extracted/fhir_r4/fhir';
 
 -- AI TeamSELECT
  SELECT
