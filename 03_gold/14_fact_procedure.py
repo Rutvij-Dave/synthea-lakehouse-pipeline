@@ -1,5 +1,4 @@
 from pyspark import pipelines as dp
-from pyspark.sql import functions as F
 
 
 @dp.table(
@@ -18,9 +17,7 @@ def fact_procedure():
             "encounter_id",
             "procedure_code",
             "procedure_description",
-            "procedure_start_ts",
-            "procedure_end_ts",
-            "procedure_duration_days",
+            "procedure_date",
             "base_cost",
             "reason_code",
             "reason_description",
